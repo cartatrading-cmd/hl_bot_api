@@ -37,7 +37,9 @@ class StoreBotConfigRequest extends FormRequest
             'leverage_multiplier'      => ['numeric', 'min:0.1', 'max:10'],
             'enable_reconciler_downsize' => ['boolean'],
             'enable_reconciler_upsize'   => ['boolean'],
-            'dry_run'                  => ['boolean'],
+            'max_drift_pct'              => ['numeric', 'min:0.01', 'max:1.0'],
+            'max_drift_usd'              => ['numeric', 'min:0'],
+            'dry_run'                    => ['boolean'],
         ];
     }
 }

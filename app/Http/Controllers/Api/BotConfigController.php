@@ -21,16 +21,13 @@ class BotConfigController extends Controller
         $configs = BotConfig::orderBy('name')->get();
 
         // Reconcile is_active against the real process state.
-        // If the process died unexpectedly (is_active=true but PID gone), restart it.
+        // If the process died unexpectedly (is_active=true but PID gone), mark it
+        // inactive rather than auto-restarting.  Auto-restart created a death loop:
+        // stop() writes a sentinel → bot exits quickly → DB not yet updated → index()
+        // restarts the bot → new process detects the leftover sentinel → exits again.
         foreach ($configs as $config) {
             if ($config->is_active && $config->pid && ! $this->process->isRunning($config->pid)) {
-                try {
-                    $pid = $this->process->start($config);
-                    $config->update(['pid' => $pid]);
-                } catch (\RuntimeException $e) {
-                    // Could not restart — mark inactive so the UI shows the real state.
-                    $config->update(['is_active' => false, 'pid' => null]);
-                }
+                $config->update(['is_active' => false, 'pid' => null]);
             }
         }
 

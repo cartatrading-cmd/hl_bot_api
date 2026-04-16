@@ -56,9 +56,12 @@ class BotProcessService
     public function stop(int $pid, int $botConfigId = 0): void
     {
         if (PHP_OS_FAMILY === 'Windows') {
+            $sentinel = $botConfigId
+                ? $this->botDir . DIRECTORY_SEPARATOR . "stop_{$botConfigId}.flag"
+                : null;
+
             // Step 1 — write sentinel so the Python bot exits gracefully.
-            if ($botConfigId) {
-                $sentinel = $this->botDir . DIRECTORY_SEPARATOR . "stop_{$botConfigId}.flag";
+            if ($sentinel) {
                 file_put_contents($sentinel, (string) time());
             }
 
@@ -71,6 +74,13 @@ class BotProcessService
             // Step 3 — force-kill if still alive.
             if ($this->isRunning($pid)) {
                 exec("taskkill /F /T /PID {$pid} 2>&1");
+            }
+
+            // Step 4 — always clean up the sentinel file, whether the bot deleted it
+            // or not (e.g. force-killed before the Python watcher could unlink it).
+            // Without this, a leftover sentinel causes the next boot to exit immediately.
+            if ($sentinel && file_exists($sentinel)) {
+                @unlink($sentinel);
             }
         } else {
             exec("kill -SIGTERM {$pid} 2>&1");
@@ -188,6 +198,11 @@ class BotProcessService
             // Reconciler
             'ENABLE_RECONCILER_DOWNSIZE' => $config->enable_reconciler_downsize ? 'true' : 'false',
             'ENABLE_RECONCILER_UPSIZE'   => $config->enable_reconciler_upsize ? 'true' : 'false',
+            // Drift thresholds — not injected here; the bot reads them from its own
+            // .env file so all instances share a single place to tune these values.
+            // Uncomment to override per-bot config from the database instead:
+            // 'MAX_DRIFT_PCT' => (string) $config->max_drift_pct,
+            // 'MAX_DRIFT_USD' => (string) $config->max_drift_usd,
             // Safety
             'DRY_RUN'                    => $config->dry_run ? 'true' : 'false',
             // API ingestion (logs + state)
