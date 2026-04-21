@@ -83,7 +83,14 @@ class BotProcessService
                 @unlink($sentinel);
             }
         } else {
-            exec("kill -SIGTERM {$pid} 2>&1");
+            // posix_kill() is more reliable than exec("kill ...") — no shell
+            // subprocess, no PATH dependency, works regardless of www-data's
+            // shell restrictions.
+            if (function_exists('posix_kill')) {
+                posix_kill($pid, SIGTERM);
+            } else {
+                exec("kill -SIGTERM {$pid} 2>&1");
+            }
         }
     }
 
