@@ -87,9 +87,9 @@ class BotProcessService
             // subprocess, no PATH dependency, works regardless of www-data's
             // shell restrictions.
             if (function_exists('posix_kill')) {
-                posix_kill($pid, SIGTERM);
+                posix_kill($pid, 15); // 15 = SIGTERM
             } else {
-                exec("kill -SIGTERM {$pid} 2>&1");
+                exec("kill -15 {$pid} 2>&1");
             }
         }
     }
