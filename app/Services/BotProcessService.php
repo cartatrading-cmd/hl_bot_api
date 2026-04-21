@@ -159,8 +159,12 @@ class BotProcessService
             $envPairs[] = sprintf('%s=%s', $key, escapeshellarg((string) $value));
         }
 
+        // cd to botDir first so that `python3 -m hl_bot.main` finds the package.
+        // PYTHON_BIN should point to the venv interpreter in production, e.g.:
+        //   PYTHON_BIN=/home/ubuntu/hl_bot/.venv/bin/python3
         $cmd = sprintf(
-            '%s nohup %s -m hl_bot.main >> %s 2>&1 & echo $!',
+            'cd %s && %s nohup %s -m hl_bot.main >> %s 2>&1 & echo $!',
+            escapeshellarg($this->botDir),
             implode(' ', $envPairs),
             escapeshellarg($this->pythonBin),
             escapeshellarg($log),
