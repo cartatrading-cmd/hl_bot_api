@@ -159,12 +159,15 @@ class BotProcessService
             $envPairs[] = sprintf('%s=%s', $key, escapeshellarg((string) $value));
         }
 
-        // cd to botDir first so that `python3 -m hl_bot.main` finds the package.
+        // PYTHONPATH lets Python find the `hl_bot` package without a `cd`.
+        // Keeping the original single-command structure ensures $! is Python's
+        // actual PID (not a shell wrapper's), so kill -SIGTERM works correctly.
         // PYTHON_BIN should point to the venv interpreter in production, e.g.:
         //   PYTHON_BIN=/home/ubuntu/hl_bot/.venv/bin/python3
+        $envPairs[] = sprintf('PYTHONPATH=%s', escapeshellarg($this->botDir));
+
         $cmd = sprintf(
-            'cd %s && %s nohup %s -m hl_bot.main >> %s 2>&1 & echo $!',
-            escapeshellarg($this->botDir),
+            '%s nohup %s -m hl_bot.main >> %s 2>&1 & echo $!',
             implode(' ', $envPairs),
             escapeshellarg($this->pythonBin),
             escapeshellarg($log),
